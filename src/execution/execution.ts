@@ -4,7 +4,6 @@ import {
 } from "../gamification/gamification";
 import {
   PolyglotEdge,
-  PolyglotEdgeFailDebtData,
   PolyglotFlow,
   PolyglotNode,
   PolyglotNodeValidation,
@@ -15,16 +14,6 @@ import {
   pathSelectorMap,
 } from "./algo/register";
 import { AbstractAlgorithm, DistrubutionAlgorithm } from "./algo/base";
-import { nodeTypeExecution } from "./plugins/pluginMap";
-import { API } from "../api/api";
-import { EducationLevel, LearningOutcome } from "../types";
-const mapType = {
-  0: "OpenQuestionNode",
-  2: "TrueFalseNode",
-  3: "closeEndedQuestionNode",
-  4: "multipleChoiceQuestionNode",
-};
-
 export type ExecCtx = {
   flowId: string;
   username?: string;
@@ -117,10 +106,7 @@ export class Execution {
     );
 
     const actualNode: PolyglotNodeValidation = {
-      ...nodeTypeExecution(
-        JSON.parse(JSON.stringify(firstNode)),
-        ctx.toString(),
-      )!,
+      ...firstNode,
       validation: outgoingEdges.map((e) => ({
         id: e.reactFlow.id,
         title: e.title,
@@ -161,7 +147,7 @@ export class Execution {
       (edge) => edge.reactFlow.source === currentNode.reactFlow.id,
     );
     const actualNode: PolyglotNodeValidation = {
-      ...nodeTypeExecution(JSON.parse(JSON.stringify(currentNode)), ctxId)!,
+      ...currentNode,
       validation: outgoingEdges.map((e) => ({
         id: e.reactFlow.id,
         title: e.title,
@@ -172,128 +158,6 @@ export class Execution {
     };
 
     if (satisfiedEdges) {
-      if (satisfiedEdges[0].type == "failDebtEdge") {
-        //case where there is a debt in the fail edge
-        //to be updated with new AI GENERATION API and new concept of "failDebt throw"
-        /*const debtEdgeData: PolyglotEdgeFailDebtData = satisfiedEdges[0]
-          .data as PolyglotEdgeFailDebtData;
-        let correctAnswersNumber: number = 1;
-        let distractorsNumber: number = 1;
-        let easilyDiscardableDistractorsNumber: number = 1;
-        let exType = "OpenQuestionNode";
-        if (debtEdgeData.typeOfExercise == 2) {
-          exType = "TrueFalseNode";
-        } else if (debtEdgeData.typeOfExercise == 3) {
-          //case closeEndedQuestion
-          exType = "closeEndedQuestionNode";
-        } else if (debtEdgeData.typeOfExercise == 4) {
-          //case multichoiceQuestion
-          exType = "multipleChoiceQuestionNode";
-          distractorsNumber = 2;
-          easilyDiscardableDistractorsNumber = 1;
-        }
-        const response = await API.generateNewExercise({
-          //fix aaaaaaaaaaaaaaaaaaaaaa
-          title: "",
-          macro_subject: "",
-          topics: [],
-          education_level: EducationLevel.ElementarySchool,
-          learning_outcome: LearningOutcome.RecallRecognize,
-          duration: 0,
-          language: "",
-          model: "",
-        });
-        let dataGen;
-        switch (debtEdgeData.typeOfExercise) {
-          case 0:
-            console.log("creating openQuestion");
-            dataGen = {
-              question: response.data.Assignment,
-              material: debtEdgeData.material,
-              aiQuestion: false,
-              possibleAnswer: response.data.Solutions[0],
-            };
-            break; 
-                  case 2:
-                    console.log('creating trueFalse');
-                    dataGen = {
-                      question: response.data.Assignment,
-                      material: sourceMaterial,
-                      aiQuestion: false,
-                      possibleAnswer: response.data.Solutions[0],
-                    };
-                    break;
-                  
-          case 3:
-            console.log("creating close_ended_question");
-            const question =
-              response.data.Assignment + "\n" + response.data.Plus;
-            dataGen = {
-              question: question,
-              correctAnswers: response.data.Solutions,
-            };
-            break;
-          case 4:
-            console.log("creating multichoice");
-
-            const answers = [].concat(
-              response.data.Solutions,
-              response.data.Distractors,
-              response.data.EasilyDiscardableDistractors,
-            ); //response.data.
-            answers.sort(() => Math.random() - 0.5);
-
-            const isAnswerCorrect = new Array(answers.length).fill(false);
-            answers.forEach((value, index) => {
-              if (response.data.Solutions.includes(value))
-                isAnswerCorrect[index] = true;
-            });
-            if (exType == "TrueFalseNode")
-              dataGen = {
-                instructions: "Argument: " + response.data.Assignment,
-                questions: answers,
-                isQuestionCorrect: isAnswerCorrect,
-              };
-            else
-              dataGen = {
-                question: response.data.Assignment,
-                choices: answers,
-                isChoiceCorrect: isAnswerCorrect,
-              };
-            break;
-          default:
-            console.log("error in exerciseType");
-            throw ": generated type error";
-        }
-        const ghostNode: PolyglotNodeValidation = {
-          _id: "ghost",
-          description: "This is a debt activity, complete it to proceed",
-          difficulty: 1,
-          runtimeData: "ghost",
-          platform: "WebApp",
-          reactFlow: {},
-          title: debtEdgeData.title,
-          type: exType,
-          data: dataGen,
-          validation: [
-            {
-              id: satisfiedEdges[0]._id,
-              title: "ghost",
-              code: '\nasync Task<(bool, string)> validate(PolyglotValidationContext context) {\n    return (true, "Unconditional edge");\n}',
-              data: {
-                conditionKind: "pass",
-              },
-              type: "unconditionalEdge",
-            },
-          ],
-        };
-        console.log("completed");
-        this.ctx.currentNodeId = "ghostNode";
-        return { ctx: this.ctx, node: ghostNode };
-      */
-        console.log("fail debt");
-        return { ctx: this.ctx, node: null };
-      }
       const possibleNextNodes = satisfiedEdges.map((edge) =>
         this.flow.nodes.find(
           (node) => node.reactFlow.id === edge.reactFlow.target,
@@ -328,7 +192,7 @@ export class Execution {
         (edge) => edge.reactFlow.source === currentNode.reactFlow.id,
       );
       const actualNode: PolyglotNodeValidation = {
-        ...nodeTypeExecution(JSON.parse(JSON.stringify(currentNode)), ctxId)!,
+        ...currentNode,
         validation: outgoingEdges.map((e) => ({
           id: e.reactFlow.id,
           title: e.title,
@@ -358,7 +222,6 @@ export class Execution {
 
     if (this.ctx.currentNodeId == "ghostNode") {
       //ghost Execution done
-      console.log("qqqqqqqqqqqqqqqq");
       return await this.ghostNodeAdvance(
         this.ctx.execNodeInfo,
         satisfiedEdges,

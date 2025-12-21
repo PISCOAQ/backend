@@ -15,12 +15,8 @@
     "type": "git",
     "url": "git+https://github.com/polyglot-edu/polyglot-server.git"
   },
-  "author": "Tommaso Martorella (tom.martorella@gmail.com)",
-  "contributors": [
-    {
-      "name": "Davide Frageri",
-      "email": "davide.frag@gmail.com"
-    }
+  "author": "Tommaso Guidolin (tommasoguidolin01@gmail.com)",
+  "contributors": [    
   ],
   "bugs": {
     "url": "https://github.com/polyglot-edu/polyglot-server/issues"

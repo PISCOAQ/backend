@@ -22,8 +22,8 @@ services:
       - COOKIE_KEY=any_long_and_random_string
       - OPENAI_SECRET_KEY=YOUR_OPENAI_SECRET_KEY
       - OPENAI_ENDPOINT=YOUR_OPENAI_ENDPOINT
-      - ISSUER_BASE_URL=https://polyglot-edu.eu.auth0.com/
-      - AUDIENCE=https://api.polyglot-edu.com
+      - ISSUER_BASE_URL=... #TODO: replace with your auth0 issuer url
+      - AUDIENCE=... #TODO: replace with your auth0 audience example: https://api.yourdomain.com
       - TEST_MODE=true
       
     command: npm run dev

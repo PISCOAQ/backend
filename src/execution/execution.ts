@@ -1,7 +1,4 @@
-import {
-  GameEngine,
-  SmartCampusGameEngine,
-} from "../gamification/gamification";
+
 import {
   PolyglotEdge,
   PolyglotFlow,
@@ -9,11 +6,10 @@ import {
   PolyglotNodeValidation,
 } from "../types";
 import {
-  getAbstractAlgorithm,
   getPathSelectorAlgorithm,
   pathSelectorMap,
 } from "./algo/register";
-import { AbstractAlgorithm, DistrubutionAlgorithm } from "./algo/base";
+import { DistrubutionAlgorithm } from "./algo/base";
 export type ExecCtx = {
   flowId: string;
   username?: string;
@@ -34,9 +30,7 @@ export type ExecProps = {
 export class Execution {
   private ctx: ExecCtx;
   private algo: DistrubutionAlgorithm;
-  private abstractAlgo: AbstractAlgorithm | null;
   private flow: PolyglotFlow;
-  private gameEngine: GameEngine;
 
   constructor(params: ExecProps) {
     const { ctx, algo, flow } = params;
@@ -46,10 +40,8 @@ export class Execution {
     }
 
     this.ctx = ctx;
-    this.abstractAlgo = null;
     this.algo = getPathSelectorAlgorithm(algo, ctx);
     this.flow = flow;
-    this.gameEngine = new SmartCampusGameEngine();
 
     // TODO: refactor
     this.algo.setFlow(flow);
@@ -213,9 +205,6 @@ export class Execution {
     ctxId: string,
   ): Promise<{ ctx: ExecCtx; node: PolyglotNodeValidation | null }> {
     const { userId, gameId } = this.ctx;
-    if (userId) {
-      this.gameEngine.addPoints(gameId, userId, 100);
-    }
     const satisfiedEdges = this.flow.edges.filter((edge) =>
       satisfiedConditions.includes(edge.reactFlow.id),
     );

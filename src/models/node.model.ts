@@ -106,9 +106,9 @@ export const openQuestionNodeSchema = new mongoose.Schema(
 export const multipleChoiceQuestionNodeSchema = new mongoose.Schema(
   {
     data: {
-      question: { type: String },
-      choices: [{ type: String }],
-      isChoiceCorrect: [{ type: Boolean }],
+      question: [{ type: String }],
+      choices: [[{ type: String }]],
+      isChoiceCorrect: [[{ type: Boolean }]],
     },
   },
   options,

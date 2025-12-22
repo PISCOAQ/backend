@@ -4,6 +4,7 @@ import { v4 } from "uuid";
 import { ExecCtx, Execution } from "../execution/execution";
 import { start } from "repl";
 import { PolyglotNodeValidation } from "../types";
+import { exec } from "child_process";
 
 type SendCommandBody = {
   ctxId: string;
@@ -311,7 +312,7 @@ export async function getNextExercisev2(
 
     const { ctx: updatedCtx, node: firstNode } =
       await execution.getNextExercise(satisfiedConditions, ctxId);
-
+      
     if (!firstNode) {
       res.status(404).send();
       return;

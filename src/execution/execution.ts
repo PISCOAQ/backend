@@ -16,6 +16,7 @@ export type ExecCtx = {
   userId: string | null;
   gameId: string;
   currentNodeId: string;
+  numberTrys?: number;
   execNodeInfo: ExecCtxNodeInfo;
 };
 

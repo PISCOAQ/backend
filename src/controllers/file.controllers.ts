@@ -140,3 +140,71 @@ export async function fileCleanUp(
     next(error);
   }
 }
+
+const imageStorage = multer.diskStorage({
+  destination: (req: any, _file: any, cb: any) => {
+    const { nodeId, qid } = req.params;
+    const uploadsDir = path.join(baseUploadsDir, nodeId.toString(), "questions", qid.toString());
+    createUploadsDir(uploadsDir);
+    cb(null, uploadsDir);
+  },
+  filename: (_req: any, file: any, cb: any) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+
+const imageUpload = multer({
+  storage: imageStorage,
+  fileFilter: (_req: any, file: any, cb: any) => {
+    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    if (!allowed.includes(file.mimetype)) return cb(new Error("Only images allowed"));
+    cb(null, true);
+  },
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+export const uploadQuestionImage = [
+  imageUpload.single("file"),
+  async (req: RequestWithFile, res: Response) => {
+    const { nodeId, qid } = (req as any).params;
+    if (!req.file) return res.status(400).json({ message: "Nessun file caricato" });
+
+    const fileId = `${nodeId}::${qid}`;
+
+    try {
+      const updatedFile = await PolyglotFileModel.findByIdAndUpdate(
+        fileId,
+        {
+          _id: fileId,
+          parentNodeId: nodeId,
+          filename: req.file.filename,
+          path: req.file.path,
+          uploadedAt: new Date(),
+        },
+        { upsert: true, new: true }
+      );
+
+      res.json({ message: "Image uploaded", file: updatedFile });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Errore durante l'upload immagine" });
+    }
+  },
+];
+
+export const downloadQuestionImage = async (req: Request, res: Response) => {
+  const { nodeId, qid } = (req as any).params;
+  const fileId = `${nodeId}::${qid}`;
+
+  try {
+    const file = await PolyglotFileModel.findById(fileId);
+    if (!file) return res.status(404).json({ message: "File not found" });
+
+    res.header("Access-Control-Expose-Headers", "Content-Disposition");
+    res.setHeader("Content-Disposition", `inline; filename="${file.filename}"`);
+    return res.sendFile(file.path);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error during download" });
+  }
+};

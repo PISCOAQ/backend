@@ -3,4 +3,5 @@ export type PolyglotFileInfo = {
   filename: string;
   path: string;
   uploadedAt: Date;
+  parentNodeId?: string;
 };

@@ -1,6 +1,5 @@
-import mongoose, { model, Model } from "mongoose";
-import { v4 as uuidv4 } from "uuid";
-import validator from "validator";
+import mongoose from "mongoose";
+import { Model, model } from "mongoose";
 import { PolyglotFileInfo } from "../types/PolyglotFile";
 
 const fileSchema = new mongoose.Schema<PolyglotFileInfo>({
@@ -9,6 +8,14 @@ const fileSchema = new mongoose.Schema<PolyglotFileInfo>({
     required: true,
     default: "",
   },
+
+  // NEW: usato per collegare file secondari (es: immagini delle domande) al nodo padre
+  // resta opzionale per non rompere i file esistenti (Read material)
+  parentNodeId: {
+    type: String,
+    required: false,
+  },
+
   filename: {
     type: String,
     required: true,
@@ -21,8 +28,6 @@ const fileSchema = new mongoose.Schema<PolyglotFileInfo>({
   },
   uploadedAt: { type: Date, default: Date.now },
 });
-
-const FileMaterial = mongoose.model("File", fileSchema);
 
 export interface PolyglotFileModel extends Model<PolyglotFileInfo> {}
 

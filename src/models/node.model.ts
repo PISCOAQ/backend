@@ -127,6 +127,113 @@ export const TrueFalseNodeSchema = new mongoose.Schema(
   options,
 );
 
+
+/* Nodo per il Test Eyes Task */
+export const EyesTaskTestNodeSchema = new mongoose.Schema(
+  {
+    data: {
+      questions: [
+        {
+          qid: { type: String },
+          answers: [{ type: String }],
+          correctIndex: { type: Number },
+        }
+      ]
+    }
+  },
+  options,
+);
+
+
+/* Nodo per il Test attribuzione delle Emozioni */
+export const EmotionAttributionTestNodeSchema = new mongoose.Schema(
+  {
+    data: {
+      questions: [
+        {
+          qid: { type: String },
+
+          narration: { type: String, default: "" },
+          question: { type: String, default: "" },
+
+          // Lista di risposte accettate come corrette
+          correctAnswers: [{ type: String }],
+        },
+      ],
+    },
+  },
+  options
+);
+
+
+export const TeoriaDellaMenteNodeSchema = new mongoose.Schema(
+  {
+    data: {
+      quiz: [
+        {
+          qid: { type: String, required: true },
+          narration: { type: String, default: '' },
+          questions: [
+            {
+              question: { type: String, default: '' },
+              answers: [{ type: String, default: [] }],
+              correctIndex: { type: Number, default: null },
+            },
+          ],
+        },
+      ],
+    },
+  },
+  options
+);
+
+export const FauxPasNodeSchema = new mongoose.Schema(
+  {
+    data: {
+      quiz: [
+        {
+          qid: { type: String, required: true },
+          narration: { type: String, default: '' },
+          questions: [
+            {
+              question: { type: String, default: '' },
+              answers: [{ type: String, default: [] }],
+              correctIndex: { type: Number, default: null },
+            },
+          ],
+        },
+      ],
+    },
+  },
+  options
+);
+
+/* Nodo: Situazioni sociali (sezioni con grassetto + risposte multi-select) */
+export const socialSituationsNodeSchema = new mongoose.Schema(
+  {
+    data: {
+      items: [
+        {
+          sid: { type: String },
+
+          sections: [
+            {
+              before: { type: String, default: "" },
+              bold: { type: String, default: "" },
+              after: { type: String, default: "" },
+
+              answers: [{ type: String }],
+              correctIndexes: [{ type: Number }], // multi-select
+            },
+          ],
+        },
+      ],
+    },
+  },
+  options
+);
+
+
 export const CircuitNodeSchema = new mongoose.Schema(
   {
     data: {
@@ -136,6 +243,7 @@ export const CircuitNodeSchema = new mongoose.Schema(
   },
   options,
 );
+
 export const PolyglotNodeModel = model<PolyglotNode, PolyglotNodeModel>(
   "Node",
   nodeSchema,
@@ -186,4 +294,34 @@ export const TrueFalseNode = PolyglotNodeModel.discriminator(
 export const CircuitNode = PolyglotNodeModel.discriminator(
   "CircuitNode",
   CircuitNodeSchema,
+);
+
+/* Discriminator per il Test Attribuzione delle Emozioni */
+export const EmotionAttributionTestNode = PolyglotNodeModel.discriminator(
+  "EmotionAttributionTestNode",
+  EmotionAttributionTestNodeSchema,
+);
+
+/* Discriminator per il Test Eyes Task */
+export const EyesTaskTestNode = PolyglotNodeModel.discriminator(
+  "EyesTaskTestNode",
+  EyesTaskTestNodeSchema,
+);
+
+/* Discriminator per il Test Situazioni Sociali */
+export const socialSituationsNode = PolyglotNodeModel.discriminator(
+  "socialSituationsNode",
+  socialSituationsNodeSchema
+);
+
+/* Discriminator per il Test Teoria della mente */
+export const TeoriaDellaMenteNode = PolyglotNodeModel.discriminator(
+  "TeoriaDellaMenteNode",
+  TeoriaDellaMenteNodeSchema
+);
+
+/* Discriminator per il Test Teoria della mente */
+export const FauxPasNode = PolyglotNodeModel.discriminator(
+  "FauxPasNode",
+  FauxPasNodeSchema
 );

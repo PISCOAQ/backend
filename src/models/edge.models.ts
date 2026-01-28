@@ -114,6 +114,17 @@ export const unconditionalEdgeSchema = new mongoose.Schema(
   options,
 );
 
+export const conditionalEdgeSchema = new mongoose.Schema(
+  {
+    data: {
+      operator: { type: String, enum: ['>', '>=', '<', '<=', '=='], required: true },
+      threshold: { type: Number, required: true },
+    },
+  },
+  options,
+);
+
+
 export const PolyglotEdgeModel = model<PolyglotEdge, PolyglotEdgeModel>(
   "Edge",
   edgeSchema,
@@ -147,4 +158,9 @@ export const ManuallyProgressEdge = PolyglotEdgeModel.discriminator(
 export const UnconditionalEdge = PolyglotEdgeModel.discriminator(
   "unconditionalEdge",
   unconditionalEdgeSchema,
+);
+
+export const ConditionalEdge = PolyglotEdgeModel.discriminator(
+  'conditionalEdge',
+  conditionalEdgeSchema,
 );

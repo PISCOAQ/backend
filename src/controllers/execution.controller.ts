@@ -69,7 +69,7 @@ export async function startExecution(
     const flow = await PolyglotFlowModel.findById(flowId).populate([
       "nodes",
       "edges",
-    ]);
+    ]).lean();
     if (!flow) {
       return res.status(404).send();
     }
@@ -122,7 +122,7 @@ export async function getActualNode(
     const flow = await PolyglotFlowModel.findById(ctx.flowId).populate([
       "nodes",
       "edges",
-    ]);
+    ]).lean();
 
     if (!flow) return res.status(404).send();
 
@@ -189,7 +189,7 @@ export async function resetExecution(
     const flow = await PolyglotFlowModel.findById(ctx.flowId).populate([
       "nodes",
       "edges",
-    ]);
+    ]).lean();
 
     if (!flow) return res.status(404).send();
 
@@ -220,7 +220,7 @@ export async function progressExecution(
     const flow = await PolyglotFlowModel.findById(ctx.flowId).populate([
       "nodes",
       "edges",
-    ]);
+    ]).lean();
 
     if (!flow) return res.status(404).send();
 
@@ -268,7 +268,7 @@ export async function resetProgress(
     const flow = await PolyglotFlowModel.findById(ctx.flowId).populate([
       "nodes",
       "edges",
-    ]);
+    ]).lean();
 
     if (!flow) return res.status(404).send();
 
@@ -301,7 +301,7 @@ export async function getNextExercisev2(
     const flow = await PolyglotFlowModel.findById(ctx.flowId).populate([
       "nodes",
       "edges",
-    ]);
+    ]).lean();
 
     if (!flow) return res.status(404).send();
     if (satisfiedConditions.length === 0) return res.status(200).json(null);

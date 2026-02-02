@@ -346,7 +346,7 @@ export const updateFlowQuery = async (
     (flow as any).edges.length > 0 &&
     typeof (flow as any).edges[0] === "object";
 
-  // ✅ Validazione semantica (solo se ho i nodi/edge completi)
+  // Validazione semantica (solo se ho i nodi/edge completi)
   // (Questa deve lanciare errore se trova overlap)
   if (nodesAreObjects && edgesAreObjects) {
     validateNoOverlappingConditionalEdges(flow);

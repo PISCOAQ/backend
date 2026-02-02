@@ -244,6 +244,67 @@ export const CircuitNodeSchema = new mongoose.Schema(
   options,
 );
 
+/* Nodo per l'esercitazione attribuzione delle Emozioni tipo A */
+export const EmotionAttributionANodeSchema = new mongoose.Schema(
+  {
+    data: {
+      scenario: { type: String, default: "" },
+      domanda: { type: String, default: "" },
+      risposteCorrette: [{ type: String }],
+      spiegazioneS: { type: String, default: "" },
+      spiegazioneR: { type: String, default: "" },
+    },
+  },
+  options
+);
+
+/* Nodo per l'esercitazione attribuzione delle Emozioni tipo A */
+export const EmotionAttributionBNodeSchema = new mongoose.Schema(
+  {
+    data: {
+      items: [
+        {
+          emotion: { type: String, default: "" },
+          scenario: { type: String, default: "" },
+          scenarioExplanation: { type: String, default: "" },
+        },
+      ],      
+    },
+  },
+  options
+);
+
+/* Nodo per l'esercitazione attribuzione delle Emozioni tipo A */
+export const ContainerNodeSchema = new mongoose.Schema(
+  {
+    data: {
+      sections: {
+        type: [
+          {
+            id: { type: String, required: true },
+
+            items: {
+              type: [
+                {
+                  id: { type: String, required: true },
+                  type: { type: String, required: true }, // es: "EmotionAttributionANode"
+                  title: { type: String },
+                  data: { type: mongoose.Schema.Types.Mixed, default: {} },
+                },
+              ],
+              default: [],
+            },
+          },
+        ],
+        default: [],
+      },
+    },
+  },
+  options
+);
+
+
+
 export const PolyglotNodeModel = model<PolyglotNode, PolyglotNodeModel>(
   "Node",
   nodeSchema,
@@ -324,4 +385,22 @@ export const TeoriaDellaMenteNode = PolyglotNodeModel.discriminator(
 export const FauxPasNode = PolyglotNodeModel.discriminator(
   "FauxPasNode",
   FauxPasNodeSchema
+);
+
+export const ContainerNode = PolyglotNodeModel.discriminator(
+  "ContainerNode",
+  ContainerNodeSchema,
+);
+
+/* Discriminator per l'esercitazione Attribuzione delle Emozioni tipo A */
+export const EmotionAttributionANode = PolyglotNodeModel.discriminator(
+  "EmotionAttributionANode",
+  EmotionAttributionANodeSchema,
+);
+
+
+/* Discriminator per l'esercitazione Attribuzione delle Emozioni tipo A */
+export const EmotionAttributionBNode = PolyglotNodeModel.discriminator(
+  "EmotionAttributionBNode",
+  EmotionAttributionBNodeSchema,
 );

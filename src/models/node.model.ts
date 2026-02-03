@@ -274,6 +274,25 @@ export const EmotionAttributionBNodeSchema = new mongoose.Schema(
   options
 );
 
+/* Nodo per l'esercitazione Situazioni sociali tipo A */
+export const SocialSituationExerciseANodeSchema = new mongoose.Schema(
+  {
+    data: {
+      scenario: { type: String },
+      items: [
+        {
+          type: {
+            answer: { type: String },
+            explanation: { type: String },
+          },
+        },
+      ],
+      correctIndex: { type: Number, default: 0 },
+    },
+  },
+  options,
+);
+
 /* Nodo per l'esercitazione attribuzione delle Emozioni tipo A */
 export const ContainerNodeSchema = new mongoose.Schema(
   {
@@ -403,4 +422,10 @@ export const EmotionAttributionANode = PolyglotNodeModel.discriminator(
 export const EmotionAttributionBNode = PolyglotNodeModel.discriminator(
   "EmotionAttributionBNode",
   EmotionAttributionBNodeSchema,
+);
+
+/* Discriminator per l'esercitazione Attribuzione delle Emozioni tipo A */
+export const SocialSituationExerciseANode = PolyglotNodeModel.discriminator(
+  "SocialSituationExerciseANode",
+  SocialSituationExerciseANodeSchema,
 );

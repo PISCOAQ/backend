@@ -10,5 +10,9 @@ router
   .get(FileControllers.fileCleanUp);
 router.post("/upload/:nodeId/questions/:qid", checkAuth, FileControllers.uploadQuestionImage);
 router.get("/download/:nodeId/questions/:qid", checkAuth, FileControllers.downloadQuestionImage);
+router.delete("/questions/:nodeId/:qid",checkAuth,FileControllers.deleteQuestionImage);
+router.delete("/node/:nodeId", checkAuth, FileControllers.deleteAllNodeFiles);
+
+
 
 export default router;

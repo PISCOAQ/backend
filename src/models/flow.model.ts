@@ -38,20 +38,19 @@ export const flowSchema = new mongoose.Schema<PolyglotFlow>({
   learningContext: {
     type: String,
     required: false,
-    default: " ",
+    default: null,
   },
   duration: {
     type: Number,
     required: false,
-    default: 0,
+    default: null,
   },
-  topics: [
-    {
-      type: String,
-      required: false,
-      default: " ",
-    },
-  ],
+  topics: {
+    type: [String],
+    required: false,
+    default: [],
+  },
+
   tags: [
     {
       type: {

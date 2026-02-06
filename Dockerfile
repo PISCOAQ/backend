@@ -5,7 +5,7 @@ WORKDIR /backend
 
 COPY package*.json ./
     
-RUN npm ci --only=production
+RUN npm ci
 
 COPY . .
 

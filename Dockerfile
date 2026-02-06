@@ -1,10 +1,14 @@
-ARG IMAGE=node:17.8
-FROM $IMAGE
+# base
+FROM node:24.13-alpine3.23 AS base
 
 WORKDIR /backend
 
-ADD . .
+COPY package*.json ./
+    
+RUN npm ci --only=production
 
-RUN npm install
+COPY . .
 
-CMD [ "npm", "run", "start" ]
+EXPOSE 3000
+
+ENTRYPOINT ["npm","start"]

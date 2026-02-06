@@ -1,0 +1,58 @@
+name: Build and Push Docker Image to GHCR
+
+on:
+  push:
+    branches: [ "main" ]
+    # Pubblica anche quando crei un tag semver (es. v1.0.0)
+    tags: [ 'v*.*.*' ]
+
+env:
+  # Usa docker.pkg.github.com per il vecchio registry, ghcr.io per il nuovo
+  REGISTRY: ghcr.io
+  # Il nome dell'immagine sarà <owner>/<repo>
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    # Permessi necessari per scrivere nel registry di GitHub
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Configura Docker Buildx (necessario per caching e build avanzate)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login al Container Registry
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Estrae i metadati (tag, label) per Docker
+      # Questo gestisce automaticamente i tag come 'main', 'latest' o 'v1.0'
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha
+
+      # Build e Push dell'immagine
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

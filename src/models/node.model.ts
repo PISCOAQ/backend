@@ -315,6 +315,18 @@ export const ContainerNodeSchema = new mongoose.Schema(
   options
 );
 
+/* Nodo per il Riconoscimento Emozioni */
+export const RiconoscimentoEmozioniNodeSchema = new mongoose.Schema(
+  {
+    data: {
+      imageId: { type: String },
+      answers: [{ type: String }],
+      correctIndex: { type: Number },
+    }
+  },
+  options,
+);
+
 
 
 export const PolyglotNodeModel = model<PolyglotNode, PolyglotNodeModel>(
@@ -412,8 +424,14 @@ export const EmotionAttributionBNode = PolyglotNodeModel.discriminator(
   EmotionAttributionBNodeSchema,
 );
 
-/* Discriminator per l'esercitazione Attribuzione delle Emozioni tipo A */
+/* Discriminator per l'esercitazione Situazioni Sociali */
 export const SocialSituationExerciseANode = PolyglotNodeModel.discriminator(
   "SocialSituationExerciseANode",
   SocialSituationExerciseANodeSchema,
+);
+
+/* Discriminator per l'esercitazione Riconoscimento Emozioni*/
+export const RiconoscimentoEmozioniNode = PolyglotNodeModel.discriminator(
+  "RiconoscimentoEmozioniNode",
+  RiconoscimentoEmozioniNodeSchema,
 );

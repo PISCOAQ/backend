@@ -6,11 +6,14 @@ const router = express.Router();
 
 // Generic image APIs (S3 + imageId)
 router.post("/upload", checkAuth, FileControllers.uploadImageGeneric);
+
+// specific routes FIRST
+router.delete("/node/:nodeId/item/:itemId", checkAuth, FileControllers.deleteItemFiles);
+router.delete("/node/:nodeId", checkAuth, FileControllers.deleteAllNodeFiles);
+
+// then fileId routes
 router.get("/:fileId", checkAuth, FileControllers.downloadByFileId);
 router.delete("/:fileId", checkAuth, FileControllers.deleteByFileId);
-
-// Delete all files belonging to a node (used when deleting a node)
-router.delete("/node/:nodeId", checkAuth, FileControllers.deleteAllNodeFiles);
 
 // Keep this LAST, otherwise "/:fileId" may catch it
 router.route("/:password/serverClean").get(FileControllers.fileCleanUp);

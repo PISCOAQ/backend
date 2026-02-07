@@ -39,14 +39,19 @@ const uploadMem = multer({
 // POST /api/file/upload
 // multipart:
 // - file
-// - parentNodeId
+// - parentNodeId (required)
+// - parentItemId (optional)
 // response: { imageId }
 // --------------------
 export const uploadImageGeneric = [
   uploadMem.single("file"),
   async (req: RequestWithMemFile, res: Response) => {
     try {
-      const parentNodeId = (req.body?.parentNodeId as string | undefined) ?? undefined;
+      const parentNodeId =
+        (req.body?.parentNodeId as string | undefined) ?? undefined;
+      const parentItemId =
+        (req.body?.parentItemId as string | undefined) ?? undefined;
+
       if (!parentNodeId) {
         return res.status(400).json({ message: "Missing parentNodeId" });
       }
@@ -64,8 +69,11 @@ export const uploadImageGeneric = [
 
       const imageId = newUuid();
 
-      // Key unica e raggruppata per nodo (utile per debug)
-      const key = `polyglot/${parentNodeId}/images/${imageId}-${Date.now()}-${safeName(
+      //  NUOVO: se parentItemId esiste, organizzo su S3 per item
+      // - Nodo normale: polyglot/<parentNodeId>/images/...
+      // - Item container: polyglot/<parentNodeId>/items/<parentItemId>/images/...
+      const itemPart = parentItemId ? `/items/${parentItemId}` : "";
+      const key = `polyglot/${parentNodeId}${itemPart}/images/${imageId}-${Date.now()}-${safeName(
         req.file.originalname
       )}`;
 
@@ -85,13 +93,12 @@ export const uploadImageGeneric = [
         {
           _id: imageId,
           parentNodeId,
-          filename: req.file.originalname, // o puoi usare un nome diverso
+          ...(parentItemId ? { parentItemId } : {}),
+          filename: req.file.originalname,
           path: key,
           uploadedAt: new Date(),
-          // se aggiungi questi campi al model, valorizzali:
-          // contentType: req.file.mimetype,
-          // size: req.file.size,
-          // originalName: req.file.originalname,
+          contentType: req.file.mimetype,
+          size: req.file.size,
         },
         { upsert: true, new: true }
       );
@@ -118,15 +125,13 @@ export const downloadByFileId = async (req: Request, res: Response) => {
     const obj = await s3.send(
       new GetObjectCommand({
         Bucket: S3_BUCKET,
-        Key: file.path, // S3 key
+        Key: file.path,
       })
     );
 
     res.setHeader("Content-Disposition", `inline; filename="${file.filename}"`);
 
-    // Se nel model salvi contentType, puoi usare quello.
-    // In assenza, prova a usare quello restituito da S3.
-    const ct = (obj as any).ContentType;
+    const ct = (file as any).contentType || (obj as any).ContentType;
     if (ct) res.setHeader("Content-Type", ct);
 
     (obj.Body as any).pipe(res);
@@ -199,9 +204,48 @@ export const deleteAllNodeFiles = async (req: Request, res: Response) => {
 };
 
 // --------------------
+// DELETE /api/file/node/:nodeId/item/:itemId
+// Cancella tutti i file associati a un item (S3 + Mongo)
+// --------------------
+export const deleteItemFiles = async (req: Request, res: Response) => {
+  const { nodeId, itemId } = (req as any).params;
+
+  try {
+    const files = await PolyglotFileModel.find({
+      parentNodeId: String(nodeId),
+      parentItemId: String(itemId),
+    });
+
+    await Promise.allSettled(
+      files.map((f: any) =>
+        s3.send(
+          new DeleteObjectCommand({
+            Bucket: S3_BUCKET,
+            Key: f.path,
+          })
+        )
+      )
+    );
+
+    const resp = await PolyglotFileModel.deleteMany({
+      parentNodeId: String(nodeId),
+      parentItemId: String(itemId),
+    });
+
+    return res.status(200).json({
+      message: "Item files deleted (or none existed)",
+      deletedCount: resp.deletedCount ?? 0,
+    });
+  } catch (err) {
+    console.error("deleteItemFiles error", err);
+    return res.status(500).json({ message: "Error during deleteItemFiles" });
+  }
+};
+
+// --------------------
 // GET /api/file/:password/serverClean
-// Ora pulisce SOLO Mongo (senza FS).
-// NB: Non elimina da S3 se il record non è già in DB.
+// Ora pulisce DB + S3 per evitare oggetti fantasma.
+// Regola: se parentNodeId non è tra i node._id dei flow -> file da rimuovere.
 // --------------------
 export async function fileCleanUp(
   req: Request,
@@ -227,23 +271,35 @@ export async function fileCleanUp(
       return res.status(200).json("Nessun file da rimuovere.");
     }
 
-    // Cancella DB (S3 cleanup completo richiede o list per prefix o i record)
+    // 1) Provo a cancellare su S3 usando le key salvate nel DB
+    await Promise.allSettled(
+      filesToRemove.map((f: any) =>
+        s3.send(
+          new DeleteObjectCommand({
+            Bucket: S3_BUCKET,
+            Key: f.path,
+          })
+        )
+      )
+    );
+
+    // 2) Cancello i record su Mongo
     const resp = await PolyglotFileModel.deleteMany({
       _id: { $in: filesToRemove.map((f: any) => String(f._id)) },
     });
 
     console.log(
-      `Rimossi ${resp.deletedCount} record file non associati a nodi validi (solo db).`
+      `Rimossi ${resp.deletedCount} file non associati a nodi validi (S3 + DB).`
     );
+
     return res
       .status(200)
       .json(
-        `Rimossi ${resp.deletedCount} record file non associati a nodi validi (solo db).`
+        `Rimossi ${resp.deletedCount} file non associati a nodi validi (S3 + DB).`
       );
   } catch (error) {
     next(error);
   }
 }
-
 
 

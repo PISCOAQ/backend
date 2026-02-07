@@ -9,4 +9,4 @@ RUN npm ci
 
 EXPOSE 5000
 
-ENTRYPOINT ["npm","start"]
+CMD ["npm","start"]

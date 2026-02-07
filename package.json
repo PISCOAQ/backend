@@ -7,10 +7,11 @@
   "scripts": {
     "start": "node ./dist/server.js",
     "postinstall": "tsc",
-    "dev": "nodemon -L --watch ./src ./src/server.ts",
+    "dev": "nodemon -L --watch ./src --exec \"npx tsx\" ./src/server.ts",
     "test": "jest --detectOpenHandles --coverage --verbose",
     "watch-test": "npm run test -- --watchAll"
   },
+
   "repository": {
     "type": "git",
     "url": "git+https://github.com/polyglot-edu/polyglot-server.git"

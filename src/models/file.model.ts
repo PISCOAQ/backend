@@ -8,26 +8,34 @@ const fileSchema = new mongoose.Schema<PolyglotFileInfo>({
     required: true,
   },
 
-  // Nodo a cui il file è associato (per cleanup)
+  // Nodo "reale" del flow a cui il file è associato (usato per cleanup)
   parentNodeId: {
     type: String,
     required: true,
     index: true,
   },
 
-  // Nome originale del file (per download)
+  // Item figlio opzionale (es. nodo dentro container)
+  // NON usato per cleanup globale, ma per gestione fine (delete item)
+  parentItemId: {
+    type: String,
+    required: false,
+    index: true,
+  },
+
+  // Nome originale del file (per download / debug)
   filename: {
     type: String,
     required: true,
   },
 
-  // S3 key (es: polyglot/<nodeId>/images/<imageId>-xxx.png)
+  // S3 key (es: polyglot/<parentNodeId>/images/<imageId>-xxx.png)
   path: {
     type: String,
     required: true,
   },
 
-  // Metadata utili (consigliati)
+  // Metadata utili
   contentType: {
     type: String,
     required: false,
@@ -43,6 +51,9 @@ const fileSchema = new mongoose.Schema<PolyglotFileInfo>({
     default: Date.now,
   },
 });
+
+// Indice composto utile per cancellare rapidamente i file di un item
+fileSchema.index({ parentNodeId: 1, parentItemId: 1 });
 
 export interface PolyglotFileModel extends Model<PolyglotFileInfo> {}
 

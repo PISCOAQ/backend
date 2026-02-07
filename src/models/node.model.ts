@@ -69,15 +69,7 @@ export const WatchVideoNodeSchema = new mongoose.Schema(
   options,
 );
 
-export const ReadMaterialNodeSchema = new mongoose.Schema(
-  {
-    data: {
-      text: { type: String },
-      link: { type: String },
-    },
-  },
-  options,
-);
+
 
 //assessment nodes:
 export const closeEndedQuestionNodeSchema = new mongoose.Schema(
@@ -135,6 +127,7 @@ export const EyesTaskTestNodeSchema = new mongoose.Schema(
       questions: [
         {
           qid: { type: String },
+          imageId: { type: String },
           answers: [{ type: String }],
           correctIndex: { type: Number },
         }
@@ -218,9 +211,9 @@ export const socialSituationsNodeSchema = new mongoose.Schema(
 
           sections: [
             {
-              before: { type: String, default: "" },
-              bold: { type: String, default: "" },
-              after: { type: String, default: "" },
+              before: { type: String, default: " " },
+              bold: { type: String, default: " " },
+              after: { type: String, default: " " },
 
               answers: [{ type: String }],
               correctIndexes: [{ type: Number }], // multi-select
@@ -342,11 +335,6 @@ export const LessonTextNode = PolyglotNodeModel.discriminator(
 export const WatchVideoNode = PolyglotNodeModel.discriminator(
   "WatchVideoNode",
   WatchVideoNodeSchema,
-);
-
-export const ReadMaterialNode = PolyglotNodeModel.discriminator(
-  "ReadMaterialNode",
-  ReadMaterialNodeSchema,
 );
 
 

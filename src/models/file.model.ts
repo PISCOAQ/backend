@@ -1,34 +1,52 @@
-import mongoose from "mongoose";
-import { Model, model } from "mongoose";
+import mongoose, { Model } from "mongoose";
 import { PolyglotFileInfo } from "../types/PolyglotFile";
 
 const fileSchema = new mongoose.Schema<PolyglotFileInfo>({
+  // imageId (UUID)
   _id: {
     type: String,
     required: true,
-    default: "",
   },
 
-  // NEW: usato per collegare file secondari (es: immagini delle domande) al nodo padre
-  // resta opzionale per non rompere i file esistenti (Read material)
+  // Nodo a cui il file è associato (per cleanup)
   parentNodeId: {
+    type: String,
+    required: true,
+    index: true,
+  },
+
+  // Nome originale del file (per download)
+  filename: {
+    type: String,
+    required: true,
+  },
+
+  // S3 key (es: polyglot/<nodeId>/images/<imageId>-xxx.png)
+  path: {
+    type: String,
+    required: true,
+  },
+
+  // Metadata utili (consigliati)
+  contentType: {
     type: String,
     required: false,
   },
 
-  filename: {
-    type: String,
-    required: true,
-    default: "test",
+  size: {
+    type: Number,
+    required: false,
   },
-  path: {
-    type: String,
-    required: true,
-    default: "path/",
+
+  uploadedAt: {
+    type: Date,
+    default: Date.now,
   },
-  uploadedAt: { type: Date, default: Date.now },
 });
 
 export interface PolyglotFileModel extends Model<PolyglotFileInfo> {}
 
-export default model<PolyglotFileInfo, PolyglotFileModel>("File", fileSchema);
+export default mongoose.model<PolyglotFileInfo, PolyglotFileModel>(
+  "File",
+  fileSchema
+);

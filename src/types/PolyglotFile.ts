@@ -1,7 +1,10 @@
-export type PolyglotFileInfo = {
-  _id: string;
+export interface PolyglotFileInfo {
+  _id: string;           // imageId
+  parentNodeId: string;  // nodo padre
   filename: string;
-  path: string;
-  uploadedAt: Date;
-  parentNodeId?: string;
-};
+  path: string;          // S3 key
+  contentType?: string;
+  size?: number;
+  uploadedAt?: Date;
+}
+

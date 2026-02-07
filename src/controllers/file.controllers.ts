@@ -1,273 +1,191 @@
 import { NextFunction, Request, Response } from "express";
+import crypto from "crypto";
 import PolyglotFileModel from "../models/file.model";
 import PolyglotFlowModel from "../models/flow.model";
+
 const multer = require("multer");
-//creazione path
-const fs = require("fs");
-const path = require("path");
 
-const baseUploadsDir = path.join(__dirname, "../../uploads");
+import {
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
+import { s3, S3_BUCKET } from "../services/s3";
 
-const createUploadsDir = (dir: any) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-};
+// --------------------
+// Helpers
+// --------------------
+const safeName = (s: string) => s.replace(/[^a-zA-Z0-9._-]+/g, "_");
+const newUuid = () =>
+  (globalThis.crypto as any)?.randomUUID?.() ?? crypto.randomUUID();
 
-interface MulterFile {
+interface MulterFileMem {
   fieldname: string;
   originalname: string;
   encoding: string;
   mimetype: string;
-  destination: string;
-  filename: string;
-  path: string;
   size: number;
+  buffer: Buffer;
 }
-type RequestWithFile = Request & { file?: MulterFile };
+type RequestWithMemFile = Request & { file?: MulterFileMem };
 
-const storage = multer.diskStorage({
-  destination: (req: any, file: any, cb: any) => {
-    const nodeId = req.params.id; // ID del nodo passato come parametro
-    const uploadsDir = path.join(baseUploadsDir, nodeId.toString());
-
-    // Crea la directory per il nodo se non esiste
-    createUploadsDir(uploadsDir);
-
-    cb(null, uploadsDir); // directory dove salvare i file
-  },
-  filename: (req: any, file: any, cb: any) => {
-    cb(null, Date.now() + "-" + file.originalname); // nome file con timestamp
-  },
+// Multer in-memory (NO filesystem)
+const uploadMem = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-const upload = multer({ storage });
-
-// API di Upload
-export const uploadFile = [
-  upload.single("file"), // middleware multer per gestire l'upload del file
-  async (req: RequestWithFile, res: Response) => {
-    // Usa RequestWithFile qui
-    const nodeId = req.params.id; // ID del nodo passato come parametro
-    const name = req.body.name;
+// --------------------
+// POST /api/file/upload
+// multipart:
+// - file
+// - parentNodeId
+// response: { imageId }
+// --------------------
+export const uploadImageGeneric = [
+  uploadMem.single("file"),
+  async (req: RequestWithMemFile, res: Response) => {
     try {
-      // Controlla se il file è stato caricato
+      const parentNodeId = (req.body?.parentNodeId as string | undefined) ?? undefined;
+      if (!parentNodeId) {
+        return res.status(400).json({ message: "Missing parentNodeId" });
+      }
+
       if (!req.file) {
         return res.status(400).json({ message: "Nessun file caricato" });
       }
 
-      // Crea o aggiorna il file associato al nodo
-      const updatedFile = await PolyglotFileModel.findByIdAndUpdate(
-        nodeId,
-        {
-          _id: nodeId,
-          filename: req.file.filename,
-          path: req.file.path,
-          uploadedAt: new Date(),
-          name: name,
-        },
-        { upsert: true, new: true },
-      );
-      console.log(updatedFile);
-      res.json({ message: "File caricato con successo", file: updatedFile });
-    } catch (error) {
-      console.error(error); // Log dell'errore per debugging
-      res.status(500).json({ message: "Errore durante l'upload del file" });
-    }
-  },
-];
-
-// API di Download
-export const download = async (req: Request, res: Response) => {
-  const nodeId = req.params.id; // ID del nodo passato come parametro
-
-  try {
-    // Trova il file associato al nodo
-    const file = await PolyglotFileModel.findById(nodeId);
-
-    if (!file) {
-      return res.status(304).json({ message: "File not found" });
-    }
-
-    res.header("Access-Control-Expose-Headers", "Content-Disposition");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${file.filename}"`,
-    );
-    res.download(file.path, file.filename);
-  } catch (error) {
-    console.error(error); // Log dell'errore per debugging
-    res.status(500).json({ message: "Error during download" });
-  }
-};
-
-export async function fileCleanUp(req: Request, res: Response, next: NextFunction) {
-  try {
-    if (req.params.password !== "polyglotClean") throw "Wrong password";
-
-    const files = await PolyglotFileModel.find();
-    const flows = await PolyglotFlowModel.find();
-
-    const validNodeIds = flows.flatMap((flow) => flow.nodes.map((node) => String(node._id)));
-
-    const filesToRemove = files.filter((file: any) => {
-      const id = String(file._id);
-      const parent = file.parentNodeId ? String(file.parentNodeId) : null;
-
-      const isDirect = validNodeIds.includes(id);               // _id=nodeId
-      const isChild = parent ? validNodeIds.includes(parent) : false; // parentNodeId=nodeId
-
-      return !(isDirect || isChild);
-    });
-
-
-    if (filesToRemove.length === 0) {
-      return res.status(200).json("Nessun file da rimuovere.");
-    }
-
-    // 1) cancella dal filesystem
-    for (const f of filesToRemove as any[]) {
-      try {
-        const filePath = f.path;
-        if (filePath && fs.existsSync(filePath)) {
-          const dir = path.dirname(filePath);
-          // cancello la cartella che contiene il file
-          fs.rmSync(dir, { recursive: true, force: true });
-        }
-      } catch (e) {
-        console.error("FS DELETE ERROR", { id: f._id, path: f.path, e });
+      const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+      if (!allowed.includes(req.file.mimetype)) {
+        return res
+          .status(400)
+          .json({ message: "Formato non supportato (PNG/JPG/WEBP)" });
       }
-    }
 
-    // 2) cancella da Mongo
-    const resp = await PolyglotFileModel.deleteMany({
-      _id: { $in: filesToRemove.map((f: any) => String(f._id)) },
-    });
+      const imageId = newUuid();
 
-    console.log(`Rimossi ${resp.deletedCount} file non associati a nessun nodo (db + fs).`);
-    return res.status(200).json(`Rimossi ${resp.deletedCount} file non associati a nessun nodo (db + fs).`);
-  } catch (error) {
-    next(error);
-  }
-}
+      // Key unica e raggruppata per nodo (utile per debug)
+      const key = `polyglot/${parentNodeId}/images/${imageId}-${Date.now()}-${safeName(
+        req.file.originalname
+      )}`;
 
+      // Upload su S3
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: S3_BUCKET,
+          Key: key,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype,
+        })
+      );
 
-const imageStorage = multer.diskStorage({
-  destination: (req: any, _file: any, cb: any) => {
-    const { nodeId, qid } = req.params;
-    const uploadsDir = path.join(baseUploadsDir, nodeId.toString(), "questions", qid.toString());
-    createUploadsDir(uploadsDir);
-    cb(null, uploadsDir);
-  },
-  filename: (_req: any, file: any, cb: any) => {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
-});
-
-const imageUpload = multer({
-  storage: imageStorage,
-  fileFilter: (_req: any, file: any, cb: any) => {
-    const allowed = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-    if (!allowed.includes(file.mimetype)) return cb(new Error("Only images allowed"));
-    cb(null, true);
-  },
-  limits: { fileSize: 5 * 1024 * 1024 },
-});
-
-export const uploadQuestionImage = [
-  imageUpload.single("file"),
-  async (req: RequestWithFile, res: Response) => {
-    const { nodeId, qid } = (req as any).params;
-    if (!req.file) return res.status(400).json({ message: "Nessun file caricato" });
-
-    const fileId = `${nodeId}::${qid}`;
-
-    try {
-      const updatedFile = await PolyglotFileModel.findByIdAndUpdate(
-        fileId,
+      // Salva metadati su Mongo (path = S3 key)
+      await PolyglotFileModel.findByIdAndUpdate(
+        imageId,
         {
-          _id: fileId,
-          parentNodeId: nodeId,
-          filename: req.file.filename,
-          path: req.file.path,
+          _id: imageId,
+          parentNodeId,
+          filename: req.file.originalname, // o puoi usare un nome diverso
+          path: key,
           uploadedAt: new Date(),
+          // se aggiungi questi campi al model, valorizzali:
+          // contentType: req.file.mimetype,
+          // size: req.file.size,
+          // originalName: req.file.originalname,
         },
         { upsert: true, new: true }
       );
 
-      res.json({ message: "Image uploaded", file: updatedFile });
+      return res.status(200).json({ imageId });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Errore durante l'upload immagine" });
+      console.error("uploadImageGeneric error", err);
+      return res.status(500).json({ message: "Errore upload immagine" });
     }
   },
 ];
 
-export const downloadQuestionImage = async (req: Request, res: Response) => {
-  const { nodeId, qid } = (req as any).params;
-  const fileId = `${nodeId}::${qid}`;
+// --------------------
+// GET /api/file/:fileId
+// Stream immagine dal bucket
+// --------------------
+export const downloadByFileId = async (req: Request, res: Response) => {
+  const { fileId } = (req as any).params;
 
   try {
-    const file = await PolyglotFileModel.findById(fileId);
+    const file = await PolyglotFileModel.findById(String(fileId));
     if (!file) return res.status(404).json({ message: "File not found" });
 
-    res.header("Access-Control-Expose-Headers", "Content-Disposition");
+    const obj = await s3.send(
+      new GetObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: file.path, // S3 key
+      })
+    );
+
     res.setHeader("Content-Disposition", `inline; filename="${file.filename}"`);
-    return res.sendFile(file.path);
+
+    // Se nel model salvi contentType, puoi usare quello.
+    // In assenza, prova a usare quello restituito da S3.
+    const ct = (obj as any).ContentType;
+    if (ct) res.setHeader("Content-Type", ct);
+
+    (obj.Body as any).pipe(res);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error during download" });
+    console.error("downloadByFileId error", err);
+    return res.status(500).json({ message: "Error during download" });
   }
 };
 
-export const deleteQuestionImage = async (req: Request, res: Response) => {
-  const { nodeId, qid } = (req as any).params;
-  const fileId = `${nodeId}::${qid}`;
-
-  console.log("DELETE QUESTION HIT", req.originalUrl, { nodeId, qid, fileId });
+// --------------------
+// DELETE /api/file/:fileId
+// Cancella oggetto S3 + record Mongo
+// --------------------
+export const deleteByFileId = async (req: Request, res: Response) => {
+  const { fileId } = (req as any).params;
 
   try {
-    const file = await PolyglotFileModel.findById(fileId);
+    const file = await PolyglotFileModel.findById(String(fileId));
+    if (!file) return res.status(204).send();
 
-    // 1) cancella filesystem SEMPRE (path standard)
-    const qDir = path.join(baseUploadsDir, nodeId.toString(), "questions", qid.toString());
-    console.log("Deleting dir:", qDir);
+    await s3.send(
+      new DeleteObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: file.path,
+      })
+    );
 
-    try {
-      fs.rmSync(qDir, { recursive: true, force: true });
-    } catch (e) {
-      console.error("FS DELETE ERROR", e);
-    }
+    await PolyglotFileModel.deleteOne({ _id: String(fileId) });
 
-    // 2) cancella db (se esiste)
-    if (file) {
-      await PolyglotFileModel.deleteOne({ _id: fileId });
-    }
-
-    return res.status(200).json({ message: "Question image deleted" });
+    return res.status(200).json({ message: "Deleted" });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Error during deleteQuestionImage" });
+    console.error("deleteByFileId error", err);
+    return res.status(500).json({ message: "Error during delete" });
   }
 };
 
-
+// --------------------
+// DELETE /api/file/node/:nodeId
+// Cancella tutti i file associati al nodo (S3 + Mongo)
+// --------------------
 export const deleteAllNodeFiles = async (req: Request, res: Response) => {
   const { nodeId } = (req as any).params;
 
   try {
-    const nodeDir = path.join(baseUploadsDir, nodeId.toString());
+    const files = await PolyglotFileModel.find({ parentNodeId: String(nodeId) });
 
-    // FS: ok anche se non esiste
-    try {
-      fs.rmSync(nodeDir, { recursive: true, force: true });
-    } catch (e) {
-      console.error("FS DELETE NODE DIR ERROR", { nodeId, nodeDir, e });
-    }
+    await Promise.allSettled(
+      files.map((f: any) =>
+        s3.send(
+          new DeleteObjectCommand({
+            Bucket: S3_BUCKET,
+            Key: f.path,
+          })
+        )
+      )
+    );
 
-    // DB: elimina 0..N record
     const resp = await PolyglotFileModel.deleteMany({
-      $or: [{ _id: nodeId }, { parentNodeId: nodeId }],
+      parentNodeId: String(nodeId),
     });
 
     return res.status(200).json({
@@ -275,10 +193,57 @@ export const deleteAllNodeFiles = async (req: Request, res: Response) => {
       deletedCount: resp.deletedCount ?? 0,
     });
   } catch (err) {
-    console.error(err);
+    console.error("deleteAllNodeFiles error", err);
     return res.status(500).json({ message: "Error during deleteAllNodeFiles" });
   }
 };
+
+// --------------------
+// GET /api/file/:password/serverClean
+// Ora pulisce SOLO Mongo (senza FS).
+// NB: Non elimina da S3 se il record non è già in DB.
+// --------------------
+export async function fileCleanUp(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    if (req.params.password !== "polyglotClean") throw "Wrong password";
+
+    const files = await PolyglotFileModel.find();
+    const flows = await PolyglotFlowModel.find();
+
+    const validNodeIds = flows.flatMap((flow: any) =>
+      flow.nodes.map((node: any) => String(node._id))
+    );
+
+    const filesToRemove = files.filter((file: any) => {
+      const parent = file.parentNodeId ? String(file.parentNodeId) : null;
+      return parent ? !validNodeIds.includes(parent) : true;
+    });
+
+    if (filesToRemove.length === 0) {
+      return res.status(200).json("Nessun file da rimuovere.");
+    }
+
+    // Cancella DB (S3 cleanup completo richiede o list per prefix o i record)
+    const resp = await PolyglotFileModel.deleteMany({
+      _id: { $in: filesToRemove.map((f: any) => String(f._id)) },
+    });
+
+    console.log(
+      `Rimossi ${resp.deletedCount} record file non associati a nodi validi (solo db).`
+    );
+    return res
+      .status(200)
+      .json(
+        `Rimossi ${resp.deletedCount} record file non associati a nodi validi (solo db).`
+      );
+  } catch (error) {
+    next(error);
+  }
+}
 
 
 

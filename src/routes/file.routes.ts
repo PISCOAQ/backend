@@ -3,16 +3,16 @@ import * as FileControllers from "../controllers/file.controllers";
 import { checkAuth } from "../middlewares/auth.middleware";
 
 const router = express.Router();
-router.post("/upload/:id", checkAuth, FileControllers.uploadFile);
-router.get("/download/:id", checkAuth, FileControllers.download);
-router
-  .route("/:password/serverClean") //API to clean the server from empty flows
-  .get(FileControllers.fileCleanUp);
-router.post("/upload/:nodeId/questions/:qid", checkAuth, FileControllers.uploadQuestionImage);
-router.get("/download/:nodeId/questions/:qid", checkAuth, FileControllers.downloadQuestionImage);
-router.delete("/questions/:nodeId/:qid",checkAuth,FileControllers.deleteQuestionImage);
+
+// Generic image APIs (S3 + imageId)
+router.post("/upload", checkAuth, FileControllers.uploadImageGeneric);
+router.get("/:fileId", checkAuth, FileControllers.downloadByFileId);
+router.delete("/:fileId", checkAuth, FileControllers.deleteByFileId);
+
+// Delete all files belonging to a node (used when deleting a node)
 router.delete("/node/:nodeId", checkAuth, FileControllers.deleteAllNodeFiles);
 
-
+// Keep this LAST, otherwise "/:fileId" may catch it
+router.route("/:password/serverClean").get(FileControllers.fileCleanUp);
 
 export default router;

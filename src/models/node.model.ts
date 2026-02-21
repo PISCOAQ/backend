@@ -201,6 +201,15 @@ export const FauxPasNodeSchema = new mongoose.Schema(
   options
 );
 
+const socialSituationsAnswerSchema = new mongoose.Schema(
+  {
+    text: { type: String, default: " " },
+    score: { type: Number, default: 0 },
+  },
+  { _id: false }
+);
+
+
 /* Nodo: Situazioni sociali (sezioni con grassetto + risposte multi-select) */
 export const socialSituationsNodeSchema = new mongoose.Schema(
   {
@@ -215,7 +224,7 @@ export const socialSituationsNodeSchema = new mongoose.Schema(
               bold: { type: String, default: " " },
               after: { type: String, default: " " },
 
-              answers: [{ type: String }],
+              answers: { type: [socialSituationsAnswerSchema], default: [] },
               correctIndexes: [{ type: Number }], // multi-select
             },
           ],

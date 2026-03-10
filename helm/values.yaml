@@ -7,7 +7,7 @@ httpRoute:
   enabled: false
 
 service:
-  port: 3000
+  port: 5000
 
 livenessProbe:
   httpGet:

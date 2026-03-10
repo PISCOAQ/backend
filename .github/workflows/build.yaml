@@ -15,6 +15,9 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      # Normalized image repository from docker/metadata-action (plain string, e.g. ghcr.io/org/repo)
+      image_repository: ${{ steps.meta.outputs.images }}
     
     # Permessi necessari per scrivere nel registry di GitHub
     permissions:
@@ -56,3 +59,71 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  deploy-k8s:
+    runs-on:
+      group: k8s
+      labels: github-arc-runner
+    needs: build-and-push
+    env:
+      # Use the current ref (branch or tag) as the image tag,
+      # which matches one of the tags pushed in build-and-push.
+      IMAGE_TAG: ${{ github.ref_name }}
+      # Normalized image repository coming from build-and-push (docker/metadata-action)
+      IMAGE_REPOSITORY: ghcr.io/piscoaq/backend
+      # OCI Helm chart location and version (configured as GitHub Variables)
+      HELM_CHART_URL: ${{ vars.HELM_CHART_URL }}
+      HELM_CHART_VERSION: ${{ vars.HELM_CHART_VERSION }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure kubeconfig with GitHub ARC in-cluster info
+        env:
+          # Organization-level Kubernetes token secret
+          K8S_TOKEN: ${{ secrets.K8S_TOKEN }}
+          K8S_NAMESPACE: ${{ secrets.K8S_NAMESPACE }}
+        run: |
+          # Use in-cluster environment provided by the ARC runner
+          SERVER="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
+          NAMESPACE="${K8S_NAMESPACE}"
+          CA_CERT_PATH="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+
+          mkdir -p "$HOME/.kube"
+          cat <<EOF > "$HOME/.kube/config"
+          apiVersion: v1
+          kind: Config
+          clusters:
+          - name: cluster
+            cluster:
+              server: ${SERVER}
+              certificate-authority: ${CA_CERT_PATH}
+          contexts:
+          - name: cluster-context
+            context:
+              cluster: cluster
+              namespace: ${NAMESPACE}
+              user: deploy-user
+          current-context: cluster-context
+          users:
+          - name: deploy-user
+            user:
+              token: ${K8S_TOKEN}
+          EOF
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
+      - name: Deploy application with Helm
+        env:
+          K8S_NAMESPACE: ${{ secrets.K8S_NAMESPACE }}
+        run: |
+          # Deploy using the OCI Helm chart and values from this repo,
+          # overriding image repository & tag from this workflow.
+          helm upgrade --install backend "${HELM_CHART_URL}" \
+            --version "${HELM_CHART_VERSION}" \
+            --namespace "${K8S_NAMESPACE}" \
+            --values ./helm/values.yaml \
+            --set image.repository="${IMAGE_REPOSITORY}" \
+            --set image.tag="${IMAGE_TAG}"

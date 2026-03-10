@@ -1,0 +1,19 @@
+image:
+  repository: ghcr.io/piscoaq/backend
+  tag: main
+  pullPolicy: Always
+
+httpRoute:
+  enabled: false
+
+service:
+  port: 3000
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+readinessProbe:
+  httpGet:
+    path: /
+    port: http

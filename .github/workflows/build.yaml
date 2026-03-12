@@ -130,7 +130,6 @@ jobs:
             --values ./helm/values.yaml \
             --set image.repository="${IMAGE_REPOSITORY}" \
             --set image.tag="${IMAGE_TAG}" \
-            --set appSecrets.TEST_MODE="true" \
             --set appSecrets.OPENAI_SECRET_KEY="${OPENAI_SECRET_KEY}" \
             --set appSecrets.OPENAI_ENDPOINT="${OPENAI_ENDPOINT}"
             

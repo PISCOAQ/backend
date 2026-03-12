@@ -5,9 +5,11 @@ import userRouter from "./user.routes";
 import searchRouter from "./search.routes";
 import cors from "cors";
 import fileRouter from "./file.routes";
+import healthRouter from "./health.routes";
 
 const router = express.Router();
 
+router.use("/api/health", healthRouter);
 router.use("/api/flows", flowRouter);
 router.use("/api/execution", executionRouter);
 router.use("/api/user", userRouter);

@@ -10,6 +10,8 @@ service:
   port: 5000
 
 env:
+  - name: TEST_MODE
+    value: "true"
   - name: MONGODB_URI
     valueFrom:
       secretKeyRef:
@@ -26,9 +28,9 @@ volumeMounts:
 
 livenessProbe:
   httpGet:
-    path: /
+    path: /api/health
     port: http
 readinessProbe:
   httpGet:
-    path: /
+    path: /api/health
     port: http

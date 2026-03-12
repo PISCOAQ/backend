@@ -16,6 +16,14 @@ env:
         name: mongodb-backend-credentials
         key: connectionString
 
+volumes:
+  - name: npm-cache
+    emptyDir: {}
+
+volumeMounts:
+  - name: npm-cache
+    mountPath: /.npm
+
 livenessProbe:
   httpGet:
     path: /

@@ -9,6 +9,13 @@ httpRoute:
 service:
   port: 5000
 
+env:
+  - name: MONGODB_URI
+    valueFrom:
+      secretKeyRef:
+        name: mongodb-backend-credentials
+        key: connectionString
+
 livenessProbe:
   httpGet:
     path: /

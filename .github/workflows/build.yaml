@@ -74,6 +74,8 @@ jobs:
       # OCI Helm chart location and version (configured as GitHub Variables)
       HELM_CHART_URL: ${{ vars.HELM_CHART_URL }}
       HELM_CHART_VERSION: ${{ vars.HELM_CHART_VERSION }}
+      OPENAI_SECRET_KEY: ${{ secrets.OPENAI_SECRET_KEY }}
+      OPENAI_ENDPOINT: ${{ secrets.OPENAI_ENDPOINT }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -121,9 +123,14 @@ jobs:
         run: |
           # Deploy using the OCI Helm chart and values from this repo,
           # overriding image repository & tag from this workflow.
+          # MONGODB_URI and S3 envs will be set from existing secrets
           helm upgrade --install backend "${HELM_CHART_URL}" \
             --version "${HELM_CHART_VERSION}" \
             --namespace "${K8S_NAMESPACE}" \
             --values ./helm/values.yaml \
             --set image.repository="${IMAGE_REPOSITORY}" \
-            --set image.tag="${IMAGE_TAG}"
+            --set image.tag="${IMAGE_TAG}" \
+            --set appSecrets.TEST_MODE.value="true"
+            --set appSecrets.OPENAI_SECRET_KEY.value="${OPENAI_SECRET_KEY}"
+            --set appSecrets.OPENAI_ENDPOINT.value="${OPENAI_ENDPOINT}"
+            

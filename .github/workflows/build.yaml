@@ -40,25 +40,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Estrae i metadati (tag, label) per Docker
-      # Questo gestisce automaticamente i tag come 'main', 'latest' o 'v1.0'
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=sha
-
       # Build e Push dell'immagine
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ghcr.io/piscoaq/backend:${{ github.sha }}
 
   deploy-k8s:
     runs-on:
@@ -68,7 +56,7 @@ jobs:
     env:
       # Use the current ref (branch or tag) as the image tag,
       # which matches one of the tags pushed in build-and-push.
-      IMAGE_TAG: ${{ github.ref_name }}
+      IMAGE_TAG: ${{ github.sha }}
       # Normalized image repository coming from build-and-push (docker/metadata-action)
       IMAGE_REPOSITORY: ghcr.io/piscoaq/backend
       # OCI Helm chart location and version (configured as GitHub Variables)

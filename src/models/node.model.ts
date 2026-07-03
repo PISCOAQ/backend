@@ -190,8 +190,22 @@ export const FauxPasNodeSchema = new mongoose.Schema(
           questions: [
             {
               question: { type: String, default: '' },
-              answers: [{ type: String, default: [] }],
-              correctIndex: { type: Number, default: null },
+              answers: [{ type: String }],
+              correctIndex: {
+                type: Number,
+                required: true,
+                default: 0,
+              },
+
+              skipIf: {
+                enabled: { type: Boolean, default: false },
+
+                // indice della domanda precedente da controllare
+                questionIndex: { type: Number, default: null },
+
+                // indice della risposta che fa scattare lo skip
+                answerIndex: { type: Number, default: null },
+              },
             },
           ],
         },
